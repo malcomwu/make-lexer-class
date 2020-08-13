@@ -1,16 +1,15 @@
 # makeLexerClass
 
-## Status
-To be build..
-
 A maker of lexer class that the lexer is a token string with simple
 and conditional tokenization interface.
 
+## Status
+To be build..
+
 ## Introduction
 
-This library is a spin-off
-of the https://github.com/malcomwu/musje; a sheet music and musical
-processing library in numbered musical notation.
+This library is a spin-off of the https://github.com/malcomwu/musje;
+a sheet music and musical processing library in numbered musical notation.
 
 
 ## APIs in summary
