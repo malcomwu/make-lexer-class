@@ -1,0 +1,20 @@
+{
+  "name": "makeLexerClass",
+  "version": "1.0.0",
+  "description": "A maker of lexer class that the lexer is a token string with simple tokenization interface.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/malcomwu/makeLexerClass.git"
+  },
+  "keywords": [
+    "lexer",
+    "tokenizer",
+    "conditional token string"
+  ],
+  "author": "'Malcom Wu <malcomwu@hotmail.com>",
+  "license": "Unlicensed"
+}
