@@ -57,7 +57,7 @@ const getPatterns = patterns => {
   return result
 }
 
-export default function makeLexerClass(patterns) {
+module.exports = function makeLexerClass(patterns) {
   return class Lexer {
     constructor(src) {
       this.name = 'lexer'

@@ -1,4 +1,6 @@
-import makeLexerClass from '../src/makeLexerClass.js'
+const makeLexerClass = require('../dist/makeLexerClass')
+
+console.log('makeLexerClass', makeLexerClass)
 
 const Lexer = makeLexerClass({
   '"': '"',
@@ -18,5 +20,5 @@ parse('"abc"')
 parse('"abc\\"def"')
 parse('"\\""')
 parse('""')
-// parse('"\\"')
-// parse('"abc\\"')
+try { parse('"\\"') } catch (e) { console.log('Error:', e.message) }
+try { parse('"abc\\"') } catch (e) { console.log('Error:', e.message) }

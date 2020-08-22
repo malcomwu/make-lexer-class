@@ -1,10 +1,10 @@
 {
   "name": "makeLexerClass",
   "version": "1.0.0",
-  "description": "A maker of lexer class that the lexer is a token string with simple tokenization interface.",
-  "main": "index.js",
+  "description": "A maker of lexer class with simple tokenization interface.",
+  "main": "dist/makeLexerClass.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "webpack && node ./src/post-build"
   },
   "repository": {
     "type": "git",
@@ -16,5 +16,13 @@
     "conditional token string"
   ],
   "author": "'Malcom Wu <malcomwu@hotmail.com>",
-  "license": "Unlicensed"
+  "license": "Unlicensed",
+  "devDependencies": {
+    "@babel/core": "^7.11.1",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
+    "@babel/preset-env": "^7.11.0",
+    "babel-loader": "^8.1.0",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12"
+  }
 }
