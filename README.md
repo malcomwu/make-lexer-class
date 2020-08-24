@@ -1,18 +1,24 @@
-# makeLexerClass
+# make-lexer-class
 
-A maker of lexer class that the lexer is a token string with simple
-and conditional tokenization interface.
-
-## Status
-To be build..
-
-## Introduction
-
-This library is a spin-off of the https://github.com/malcomwu/musje;
-a sheet music and musical processing library in numbered musical notation.
+A maker of lexer class with simple token-by-token interface.
 
 
-## APIs in summary
+## Install
+```sh
+npm install make-lexer-class --save
+```
+
+## Usage
+```es
+import makeLexerClass from 'make-lexer-class'
+const Lexer = makeLexerClass({
+  token1: pattern1,
+  token2: pattern2
+})
+```
+
+
+## APIs in brief
 
 ### Make a lexer class
 Make a Lexer class with definition of token names with their patterns.
@@ -138,3 +144,9 @@ lexer.mlwithout(token)            // multi-line without
   if (counter < min) lexer.error(message)
   ```
   This logic can also be used to prevent from an endless-loop during the development.
+
+
+## Note
+
+This library is a spin-off of the https://github.com/malcomwu/musje;
+a sheet music and musical processing library in numbered musical notation.
