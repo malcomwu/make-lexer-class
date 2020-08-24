@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/malcomwu/makeLexerClass.git"
+    "url": "https://github.com/malcomwu/make-lexer-class.git"
   },
   "keywords": [
     "lexer",
