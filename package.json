@@ -1,6 +1,6 @@
 {
   "name": "make-lexer-class",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A maker of lexer class with simple token-by-token interface.",
   "main": "dist/makeLexerClass.js",
   "scripts": {

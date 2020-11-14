@@ -13,8 +13,11 @@ npm install make-lexer-class --save
 import makeLexerClass from 'make-lexer-class'
 const Lexer = makeLexerClass({
   token1: pattern1,
-  token2: pattern2
+  token2: pattern2,
+  keywords: listOfKeywords
 })
+// listOfKeywordsExample = 'if|for|loop'
+// result is keywords: /(if|for|loop)\b/, if: /if\b/, for, ...
 ```
 
 

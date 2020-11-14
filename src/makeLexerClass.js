@@ -46,8 +46,18 @@ const defaultPatterns = {
   ALL: '.+'
 }
 
+const treatKeywords = patterns => {
+  const { keywords } = patterns
+  if (!keywords) return patterns
+  patterns.keywords = `(${keywords})\\b`
+  keywords.split('|').forEach(keyword => {
+    patterns[keyword] = keyword + '\\b'
+  })
+  return patterns
+}
+
 const getPatterns = patterns => {
-  patterns = { ...defaultPatterns, ...patterns }
+  patterns = { ...defaultPatterns, ...treatKeywords(patterns) }
   const result = [{}, {}, {}]
   for (let key in patterns) {
     result[0][key] = new RegExp('^' + patterns[key])
@@ -58,12 +68,12 @@ const getPatterns = patterns => {
 }
 
 module.exports = function makeLexerClass(patterns) {
+  const ptrns = getPatterns(patterns)
   return class Lexer {
     constructor(src) {
       this.name = 'lexer'
       this.src = src.replace(/\r\n/g, '\n')
       this.lines = new Lines(this.src)
-      const ptrns = getPatterns(patterns)
       this.patterns = ptrns[0]
       this.aheadPatterns = ptrns[1]
       this.globalPatterns = ptrns[2]
@@ -151,11 +161,12 @@ module.exports = function makeLexerClass(patterns) {
     }
 
     without(token, act) {
-      this.prevent(token).token('ALL', lexeme => act(lexeme))
+      this.prevent(token).optional('ALL', lexeme => act(lexeme))
     }
 
     escwithout(token, escToken, act) {
-      this.escprevent(token, escToken).token('ALL', lexeme => act(lexeme))
+      this.escprevent(token, escToken)
+          .optional('ALL', lexeme => act(lexeme))
     }
 
     // without(token, act) {
