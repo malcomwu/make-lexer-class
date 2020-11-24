@@ -1,3 +1,5 @@
+/* makeLexerClass.js v1.2.0 */
+
 const repeat = (rep, num) => new Array(num + 1).join(rep)
 
 class Lines {
@@ -40,6 +42,51 @@ class Line {
   }
 }
 
+// Data for sequencial token matching used in lexer.isSeq()
+class SeqData {
+  constructor(lexer) {
+    this.lexer = lexer
+    this.lines = lexer.lines
+    this.setCurrLine(lexer.lines.ln)
+    this.level = 1  // ref. counting
+    // console.log(this)
+  }
+
+  get eol() { return this.line.eol }
+  get eof() {
+    return this.ln === this.lines.data.length - 1 && this.line.eol
+  }
+  get hasNextLine() { return this.ln < this.lines.data.length - 1 }
+
+  setCurrLine(ln) {
+    this.ln = ln
+    this.line = new Line(this.lines.data[ln])
+  }
+
+  nextLine() { this.setCurrLine(this.ln + 1) }
+
+  eatToTest(token) {
+    if (token === 'NL') {
+      if (this.eof || !this.line.eol) return false
+      this.nextLine()
+      return true
+    }
+
+    if (token === 'NL!') {
+      if (this.hasNextLine) {
+        this.nextLine()
+        return true
+      }
+      return false
+    }
+
+    const matched = this.line.rest.match(this.lexer.getPattern(token))
+    if (!matched) return false
+    this.line.advance(matched[0].length)
+    return true
+  }
+}
+
 const defaultPatterns = {
   S: ' ',
   SS: ' +',
@@ -56,13 +103,28 @@ const treatKeywords = patterns => {
   return patterns
 }
 
+// Array is for the seq or some-of type, and only use element 0.
+const getCompoundTokens = pattern => {
+  const tokensStr = pattern[0]
+  if (/ /.test(tokensStr)) return { seq: tokensStr.split(' ') }
+  if (/|/.test(tokensStr)) return { some: tokensStr.split('|') }
+  throw new Error('Invalid compound tokens')
+}
+
+const getPattern = str => {
+  if (Array.isArray(str)) return getCompoundTokens(str)
+  if (/|/.test(str)) str = `(${str})`  // fix a|b: x=> ^a|b o=> ^(a|b)
+  return new RegExp('^' + str)
+}
+
 const getPatterns = patterns => {
   patterns = { ...defaultPatterns, ...treatKeywords(patterns) }
   const result = [{}, {}, {}]
   for (let key in patterns) {
-    result[0][key] = new RegExp('^' + patterns[key])
-    result[1][key] = new RegExp(patterns[key])
-    result[2][key] = new RegExp(patterns[key], 'g')
+    const pattern = patterns[key]
+    result[0][key] = getPattern(pattern)
+    result[1][key] = new RegExp(pattern)
+    result[2][key] = new RegExp(pattern, 'g')
   }
   return result
 }
@@ -142,8 +204,30 @@ module.exports = function makeLexerClass(patterns) {
     }
 
     is(token) {
-      return this.getPattern(token).test(this.line.rest)
+      const patternOrTokens = this.getPattern(token)
+      const { seq, some } = patternOrTokens
+      if (seq) return this.isSeq(seq)
+      if (some) return this.isSome(some)
+      if (this.seqData) return this.seqData.eatToTest(token)
+      return patternOrTokens.test(this.line.rest)
     }
+
+    isSeq(tokens) {
+      if (this.seqData) {
+        this.seqData.level++
+      } else {
+        this.seqData = new SeqData(this)
+      }
+
+      const result = tokens.every(token => this.seqData.eatToTest(token))
+
+      this.seqData.level--
+      if (!this.seqData.level) delete this.seqData
+
+      return result
+    }
+
+    isSome(tokens) { return tokens.some(token => this.is(token)) }
 
     token(tkn, act) {
       this.eat(tkn)
@@ -169,14 +253,6 @@ module.exports = function makeLexerClass(patterns) {
           .optional('ALL', lexeme => act(lexeme))
     }
 
-    // without(token, act) {
-    //   const matched = this.line.rest.match(this.getAheadPattern(token))
-    //   this.lexeme = matched ? this.line.rest.substr(0, matched.index) :
-    //                           this.line.rest
-    //   this.line.advance(this.lexeme.length)
-    //   if (act) act(this.lexeme)
-    // }
-
     mlwithout(token, act) {
       const pattern = this.getAheadPattern(token)
       const strs = []
@@ -199,9 +275,15 @@ module.exports = function makeLexerClass(patterns) {
     }
 
     error(message) {
-      throw new Error(`${message} at line ${this.ln + 1} column ${this.col + 1}.
-${this.line.str}
-${repeat(' ', this.line.col)}^`)
+      const { ln } = this
+      const messageLines = [
+        `Error: ${message} at line ${this.ln + 1} column ${this.col + 1}.`
+      ]
+      if (ln > 1) messageLines.push('|' + this.lines.data[ln - 2])
+      if (ln > 0) messageLines.push('|' + this.lines.data[ln - 1])
+      messageLines.push('|' + this.lines.data[ln])
+      messageLines.push(repeat(' ', this.line.col + 1) + '^')
+      throw new Error(messageLines.join('\n'))
     }
 
     skipSS() { this.optional('SS') }
@@ -215,5 +297,7 @@ ${repeat(' ', this.line.col)}^`)
         }
       }
     }
+
+    optionalNL() { if (this.eol && !this.eof) this.nextLine() }
   }
 }

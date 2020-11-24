@@ -8,6 +8,15 @@ A maker of lexer class with simple token-by-token interface.
 npm install make-lexer-class --save
 ```
 
+## Update
+- v1.1.0
+  - Fix lexer.without/escwithout with '' content.
+  - Add { keywords: 'aa|bb|cc' } support as in patterns.
+- v1.2.0
+  - Fix 'a|b' becomes /^a|b/ mistake; /^(a|b)/ to work around.
+  - Add look-ahead tokens with sequence, `['ta tb tc']` and with
+    some-of `'[ta|tb|tc]'`. They can be nested in hidden.
+
 ## Usage
 ```es
 import makeLexerClass from 'make-lexer-class'
