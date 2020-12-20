@@ -8,17 +8,30 @@ A maker of lexer class with simple token-by-token interface.
 npm install make-lexer-class --save
 ```
 
-## Update
+## Feature update
 - v1.1.0
-  - Fix lexer.without/escwithout with '' content.
-  - Add { keywords: 'aa|bb|cc' } support as in patterns.
+  + Fix lexer.without/escwithout with '' content.
+  + Add { keywords: 'aa|bb|cc' } support as in patterns.
+
 - v1.2.0
-  - Fix 'a|b' becomes /^a|b/ mistake; /^(a|b)/ to work around.
-  - Add look-ahead tokens with sequence, `['ta tb tc']` and with
+  + Fix 'a|b' becomes /^a|b/ mistake; /^(a|b)/ to work around.
+  + Add look-ahead tokens with sequence, `['ta tb tc']` and with
     some-of `'[ta|tb|tc]'`. They can be nested in hidden.
 
+- v1.3.0-gamma
+  + lite-token expression in `{ a : '!b', b: 'd e f ...', c: 'g|h|i|...' }`
+  + embed literal in `'{{latex}}': LatexLexer`
+  + keywords bundle: `{ keywords: 'yes|no|if|else|...'` with resulting keywords
+    and keyword boundaries. The keywords do not have token namespace and share.
+    By design logic, the token name will neither collide nor conflict.
+  + Look-ahead-token series: `lexer.is('a', 'b', 'c', ...)`. It is idential to
+    the token definition in `{ n: 'a b c...' }`. The advantage is the quotes of
+    `'a'`, `'b'`, and `'c'` can be removed and it becomes token variable in
+    `lexer.is(a, b, c, ...)`. The flexibility is for deeper future ahead-tokens.
+
+
 ## Usage
-```es
+```js
 import makeLexerClass from 'make-lexer-class'
 const Lexer = makeLexerClass({
   token1: pattern1,
@@ -30,7 +43,20 @@ const Lexer = makeLexerClass({
 ```
 
 
+## Getting start
+currently the npm version is not in sync. Please check it out from GitHub and
+run:
+
+```sh
+node samples/hello-world.js
+```
+
+For the first glance.
+
+
 ## APIs in brief
+
+(Update: this description is not updated for testing purposes.)
 
 ### Make a lexer class
 Make a Lexer class with definition of token names with their patterns.
@@ -156,6 +182,76 @@ lexer.mlwithout(token)            // multi-line without
   if (counter < min) lexer.error(message)
   ```
   This logic can also be used to prevent from an endless-loop during the development.
+
+
+## Development
+
+Updated-2020-12-20: v1.3.0-gamma. The hypenatation of 0-gamma
+denotes that it is only for the test in a cirle-of-trust. The
+future version in 0-delta is for the third-party trust. It shell
+be v1.n.m where n > 4 for feature update. The code will be
+refactored by the development amid for v2.0.0-beta. The beta
+version will be for the players and alpha for the public review.
+
+Donations are thankful but are not accepted here. It is welcome
+to contribute in the GitHub plateform. The license is unlicensed
+in public domain.
+
+**Build**
+
+Install Node.js and in the command-line interface:
+```
+npm run install
+npm run build
+```
+
+Please notice that the 0-gamma tests are in the academic level.
+The suggestion for starting of the test is test it individually
+in the EcmaScript 6 specification for clerity. The sample code in
+the next section.
+
+
+## Sample code
+It can be view or be refered to as a macro. The token definition is
+concise while the parser is verbose. It is the disadvantage but also
+the advantage for flexibility, agile development and schema validation.
+
+```js
+/* hello-world.js */
+
+// import makeLexerClass from '../dist/makeLexerClass'   // ES6 import
+const makeLexerClass = require('../dist/makeLexerClass')
+
+const Lexer = makeLexerClass({
+  // token: pattern
+  '+': '\\+',
+  integer: '[\\+\\-]?(0|([1-9]\\d*))'  // sign? none-negative-integer
+                                       //   ''  positve-integer or zero
+})
+
+// Simple add paser.
+const add = src => {
+  const lexer = new Lexer(src)
+  let value
+
+  lexer.skipWhite()  // skip ('S'|'NL')+ or use lexer.skipSS() for 'SS'
+
+  lexer.token('integer', lexeme => { value = +lexeme })
+  lexer.skipWhite()
+  lexer.token('+')
+  lexer.skipWhite()
+  lexer.token('integer', lexeme => { value += +lexeme })
+
+  lexer.skipWhite()
+  if (!lexer.eof) lexer.error('syntax error')
+
+  return value
+}
+
+console.log(add('123 + 456'))   // 579
+```
+The code is in `./samples/hello-world.js` and run `node samples/hello-world` or
+`node samples\hello-world` depending on your system.
 
 
 ## Note

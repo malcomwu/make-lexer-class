@@ -1,10 +1,13 @@
-/* makeLexerClass.js v1.2.0 */
+/* makeLexerClass.js v1.3.0-gamma */
 
 const repeat = (rep, num) => new Array(num + 1).join(rep)
+const { concat } = []
+const flatten = arr => concat.apply([], arr)
 
 class Lines {
-  constructor(str) {
-    this.data = str.split('\n')
+  constructor(str, nlSpliter = 'both') {
+    this.data = nlSpliter === 'both' ? str.replace(/\r\n/g, '\n').split('\n') :
+                                       str.split(nlSpliter)
     this.ln = -1
     this.nextLine()
   }
@@ -18,10 +21,10 @@ class Lines {
 }
 
 class Line {
-  constructor(str) {
+  constructor(str, rest, col = 0) {
     this.str = str
-    this.rest = str
-    this.col = 0
+    this.rest = rest || str
+    this.col = col
   }
 
   get eol() { return this.rest.length === 0 }
@@ -48,8 +51,7 @@ class SeqData {
     this.lexer = lexer
     this.lines = lexer.lines
     this.setCurrLine(lexer.lines.ln)
-    this.level = 1  // ref. counting
-    // console.log(this)
+    this.ref = 1
   }
 
   get eol() { return this.line.eol }
@@ -64,6 +66,17 @@ class SeqData {
   }
 
   nextLine() { this.setCurrLine(this.ln + 1) }
+
+  // Some-of, change it but the result is false. The state has to be restored.
+  keepState() {
+    this.kstate = { ln: this.ln, line: { ...this.line } }
+  }
+
+  restoreState() {
+    this.ln = this.kstate.ln
+    const { str, rest, col } = this.kstate.line
+    this.line = new Line(str, rest, col)
+  }
 
   eatToTest(token) {
     if (token === 'NL') {
@@ -80,7 +93,10 @@ class SeqData {
       return false
     }
 
-    const matched = this.line.rest.match(this.lexer.getPattern(token))
+    const pattern = this.lexer.getPattern(token)
+    if (!(pattern instanceof RegExp)) return this.lexer.is(token)
+
+    const matched = this.line.rest.match(pattern)
     if (!matched) return false
     this.line.advance(matched[0].length)
     return true
@@ -93,7 +109,7 @@ const defaultPatterns = {
   ALL: '.+'
 }
 
-const treatKeywords = patterns => {
+const arrangeKeywords = patterns => {
   const { keywords } = patterns
   if (!keywords) return patterns
   patterns.keywords = `(${keywords})\\b`
@@ -104,41 +120,66 @@ const treatKeywords = patterns => {
 }
 
 // Array is for the seq or some-of type, and only use element 0.
-const getCompoundTokens = pattern => {
-  const tokensStr = pattern[0]
+const makeCompoundTokens = arr => {
+  const tokensStr = arr[0]
+  if (/^!/.test(tokensStr)) {
+    if (/[ \|]/.test(tokensStr)) throw new Error('Not supported.')
+    return { not: tokensStr.substr(1) }
+  }
   if (/ /.test(tokensStr)) return { seq: tokensStr.split(' ') }
-  if (/|/.test(tokensStr)) return { some: tokensStr.split('|') }
-  throw new Error('Invalid compound tokens')
+  if (/\|/.test(tokensStr)) return { some: tokensStr.split('|') }
+  throw new Error('Incorrect compound tokens: ' + tokensStr)
 }
 
-const getPattern = str => {
-  if (Array.isArray(str)) return getCompoundTokens(str)
-  if (/|/.test(str)) str = `(${str})`  // fix a|b: x=> ^a|b o=> ^(a|b)
+const makePattern = str => {
+  if (Array.isArray(str)) return makeCompoundTokens(str)
+  if (/\|/.test(str)) str = `(${str})`   // fix a|b: x=> ^a|b o=> ^(a|b)
   return new RegExp('^' + str)
 }
 
+const makeEmbedData = (rawIdent, EmbedLexer) => {
+  const ident = rawIdent.substring(2, rawIdent.length - 2)
+  const result = {}
+  result[ident] = new EmbedLexer()
+  return result
+}
+
 const getPatterns = patterns => {
-  patterns = { ...defaultPatterns, ...treatKeywords(patterns) }
+  patterns = { ...defaultPatterns, ...arrangeKeywords(patterns) }
   const result = [{}, {}, {}]
   for (let key in patterns) {
     const pattern = patterns[key]
-    result[0][key] = getPattern(pattern)
+    if (/^\{\{.+\}\}$/.test(key)) { result[0][key] = new pattern(); continue }
+    result[0][key] = makePattern(pattern)
     result[1][key] = new RegExp(pattern)
     result[2][key] = new RegExp(pattern, 'g')
   }
   return result
 }
 
+const getNlSpliter = rawPattern => {
+  if (!rawPattern) return 'both'    // win & unix
+  const format = rawPattern.source.substr(1)  // turn-aboud
+  if (/^win|^(CRLF|\\r\\n)$/i.test(format)) return '\r\n'
+  if (/^(unix|LF|\\n)$/i.test(format)) return '\n'
+  if (/^mac|^(CR|\\r)$/i.test(format)) return '\r'       // prior to os x
+  throw new Error(`Invalid NL format: [${format}].`)
+}
+
 module.exports = function makeLexerClass(patterns) {
   const ptrns = getPatterns(patterns)
   return class Lexer {
-    constructor(src) {
+    constructor(src = '') {
       this.name = 'lexer'
-      this.src = src.replace(/\r\n/g, '\n')
-      this.lines = new Lines(this.src)
+      this.src = src
+      if (typeof src !== 'string') {
+        throw new Error(`The type of src, ${typeof src}, is not string.`)
+      }
       this.patterns = ptrns[0]
       this.aheadPatterns = ptrns[1]
       this.globalPatterns = ptrns[2]
+      const nlSpliter = getNlSpliter(this.patterns['NL'])
+      this.lines = new Lines(src, nlSpliter)
     }
 
     get line() { return this.lines.line }
@@ -204,8 +245,14 @@ module.exports = function makeLexerClass(patterns) {
     }
 
     is(token) {
+      const tokens = flatten(Array.from(arguments))
+      if (tokens.length > 1) return this.isSeq(tokens)
+      if (tokens.length === 1) token = tokens[0]
+      if (token === 'NL') return this.eol && !this.eof
+
       const patternOrTokens = this.getPattern(token)
-      const { seq, some } = patternOrTokens
+      const { not, seq, some } = patternOrTokens
+      if (not) return !this.is(not)
       if (seq) return this.isSeq(seq)
       if (some) return this.isSome(some)
       if (this.seqData) return this.seqData.eatToTest(token)
@@ -214,20 +261,27 @@ module.exports = function makeLexerClass(patterns) {
 
     isSeq(tokens) {
       if (this.seqData) {
-        this.seqData.level++
+        this.seqData.ref++
       } else {
         this.seqData = new SeqData(this)
       }
 
       const result = tokens.every(token => this.seqData.eatToTest(token))
 
-      this.seqData.level--
-      if (!this.seqData.level) delete this.seqData
+      this.seqData.ref--
+      if (!this.seqData.ref) delete this.seqData
 
       return result
     }
 
-    isSome(tokens) { return tokens.some(token => this.is(token)) }
+    isSome(tokens) {
+      if (this.seqData) this.seqData.keepState()
+      return tokens.some(token => {
+        const result = this.is(token)
+        if (this.seqData && !result) this.seqData.restoreState()
+        return result
+      })
+    }
 
     token(tkn, act) {
       this.eat(tkn)
@@ -245,7 +299,7 @@ module.exports = function makeLexerClass(patterns) {
     }
 
     without(token, act) {
-      this.prevent(token).optional('ALL', lexeme => act(lexeme))
+      this.prevent(token).optional('ALL', lexeme => act && act(lexeme))
     }
 
     escwithout(token, escToken, act) {
@@ -277,7 +331,7 @@ module.exports = function makeLexerClass(patterns) {
     error(message) {
       const { ln } = this
       const messageLines = [
-        `Error: ${message} at line ${this.ln + 1} column ${this.col + 1}.`
+        `${message} at line ${this.ln + 1} column ${this.col + 1}.`
       ]
       if (ln > 1) messageLines.push('|' + this.lines.data[ln - 2])
       if (ln > 0) messageLines.push('|' + this.lines.data[ln - 1])
@@ -299,5 +353,14 @@ module.exports = function makeLexerClass(patterns) {
     }
 
     optionalNL() { if (this.eol && !this.eof) this.nextLine() }
+
+    to(lang) {
+      const langLexer = this.patterns[`{{${lang}}}`]
+      if (!langLexer) {
+        throw new Error(`The embedded lexer {{${lang}}} not defined.`)
+      }
+      langLexer.lines = this.lines    // both share it
+      return langLexer
+    }
   }
 }

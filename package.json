@@ -1,6 +1,6 @@
 {
   "name": "make-lexer-class",
-  "version": "1.2.0",
+  "version": "1.3.0-gamma",
   "description": "A maker of lexer class with simple token-by-token interface.",
   "main": "dist/makeLexerClass.js",
   "scripts": {
@@ -12,7 +12,12 @@
   },
   "keywords": [
     "lexer",
-    "tokenizer"
+    "tokenizer",
+    "statement",
+    "list",
+    "light-weight",
+    "embed",
+    "language"
   ],
   "author": "'Malcom Wu <malcomwu@hotmail.com>",
   "license": "Unlicensed",
