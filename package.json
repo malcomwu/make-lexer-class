@@ -19,7 +19,7 @@
     "embed",
     "language"
   ],
-  "author": "'Malcom Wu <malcomwu@hotmail.com>",
+  "author": "'Malcom Wu <malcomwu@gmail.com>",
   "license": "Unlicensed",
   "devDependencies": {
     "@babel/core": "^7.11.1",
